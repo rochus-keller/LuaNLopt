@@ -1,0 +1,25 @@
+Lua> nlopt=require "LuaNLopt"
+Lua> print(nlopt.algorithm_name(100))
+[string "print(nlopt.algorithm_name(100))"]:1: bad argument #1 to 'algorithm_name' (expecting nlopt.algorithm)
+Lua> print(nlopt.algorithm_name(10))
+original NON-FREE L-BFGS code by Nocedal et al. (NOT COMPILED)
+Lua> print(nlopt.algorithm_name(nlopt.algorithm.GN_ORIG_DIRECT))
+Original DIRECT version (global, no-derivative)
+Lua> print(nlopt.version())
+2	3	0
+Lua> nlopt.srand_time()
+Lua> nlopt.srand(-3)
+[string "nlopt.srand(-3)"]:1: bad argument #1 to 'srand' (expecting unsigned long)
+Lua> nlopt.srand(49370)
+Lua> o1 = nlopt.create( 1, 2 )
+Lua> print( o1 )
+nlopt_opt_s 02369AE0
+Lua> print( o1:get_dimension() )
+2
+Lua> print( o1:get_algorithm() )
+1
+Lua> o2 = o1:copy()
+Lua> print( o2 )
+nlopt_opt_s 023DAD90
+Lua> print( o2:get_dimension() )
+2
