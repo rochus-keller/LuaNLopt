@@ -1,6 +1,6 @@
 /* Lua adapter to NLopt 2.3
  *
- * Issue: 2012-10-09
+ * Issue: 2012-10-13
  * Status: Alpha
  *
  * Copyright (c) 2012 Rochus Keller, rkeller@nmr.ch
@@ -15,7 +15,7 @@
 
 #define LIBNAME		"nlopt"
 #define LIBVERSION	LIBNAME " library for " LUA_VERSION
-static 	const char* nlopt_metaName = "nlopt_opt_s";
+static 	const char* nlopt_metaName = "nlopt_opt";
 
 static void setfieldint( lua_State *L, const char* key, int val )
 {
@@ -308,7 +308,22 @@ static double func(unsigned n, const double* x, double* grad, void* f_data)
 		{
 			// stack: t, res
 			const double res = lua_tonumber( ctx->L, -1 );
-			lua_pop( ctx->L, 2 );
+			lua_pop( ctx->L, 1 );
+			// stack: t
+			if( grad )
+			{
+				lua_pushliteral( ctx->L, "grad" );
+				lua_rawget( ctx->L, t );
+				const int gradt = lua_gettop( ctx->L );
+				for( i = 0; i < n; i++ )
+				{
+					lua_rawgeti( ctx->L, gradt, i + 1 );
+					grad[i] = lua_tonumber( ctx->L, -1 );
+					lua_pop( ctx->L, 1 );
+				}
+				lua_pop( ctx->L, 1 );
+			}
+			lua_pop( ctx->L, 1 );
 			return res;
 		}else
 		{
@@ -578,6 +593,30 @@ static void mfunc(unsigned m, double *result, unsigned n, const double* x, doubl
 		if( lua_pcall( ctx->L, 6, 0, 0 ) == 0 )
 		{
 			// stack: t
+			lua_pushliteral( ctx->L, "result" );
+			lua_rawget( ctx->L, t );
+			const int resultt = lua_gettop( ctx->L );
+			for( i = 0; i < m; i++ )
+			{
+				lua_rawgeti( ctx->L, resultt, i + 1 );
+				result[i] = lua_tonumber( ctx->L, -1 );
+				lua_pop( ctx->L, 1 );
+			}
+			if( grad )
+			{
+				lua_pushliteral( ctx->L, "grad" );
+				lua_rawget( ctx->L, t );
+				const int gradt = lua_gettop( ctx->L );
+				for( i = 0; i < n; i++ )
+				{
+					lua_rawgeti( ctx->L, gradt, i + 1 );
+					grad[i] = lua_tonumber( ctx->L, -1 );
+					lua_pop( ctx->L, 1 );
+				}
+				lua_pop( ctx->L, 1 );
+			}
+
+			lua_pop( ctx->L, 1 );
 			return;
 		}else
 		{
@@ -837,7 +876,8 @@ static int optimize( lua_State *L )
 	luaL_checktype( L, 2, LUA_TTABLE );
 	const int n = nlopt_get_dimension( holder->d_obj );
 	std::vector<double> x( n );
-	for( int i = 0; i < n; i++ )
+	int i;
+	for( i = 0; i < n; i++ )
 	{
 		lua_pushinteger( L, i + 1 );
 		lua_gettable( L, 2 );
@@ -847,6 +887,12 @@ static int optimize( lua_State *L )
 	double opt_f;
 	lua_pushinteger( L, nlopt_optimize( holder->d_obj, &x[0], &opt_f ) );
 	lua_pushnumber( L, opt_f );
+	for( i = 0; i < n; i++ )
+	{
+		lua_pushinteger( L, i + 1 );
+		lua_pushnumber( L, x[i] );
+		lua_settable( L, 2 );
+	}
 	return 2;
 }
 
