@@ -309,6 +309,14 @@
 			RelativePath="..\..\Libraries\NLopt\libnlopt-0.lib"
 			>
 		</File>
+		<File
+			RelativePath=".\LuaNLopt.rc"
+			>
+		</File>
+		<File
+			RelativePath=".\resource.h"
+			>
+		</File>
 	</Files>
 	<Globals>
 	</Globals>

@@ -1,7 +1,7 @@
 /* Lua adapter to NLopt 2.3
  *
- * Issue: 2012-10-13
- * Status: Alpha
+ * Issue: 2012-10-14
+ * Status: Beta
  *
  * Copyright (c) 2012 Rochus Keller, rkeller@nmr.ch
  * Licensed under the GNU Lesser General Public License (LGPL).  
@@ -37,7 +37,7 @@ static int srand( lua_State *L )
 {
 	const lua_Integer i = luaL_checkinteger( L, 1 );
 	if( i < 0 )
-		luaL_argerror( L, 1, "expecting unsigned long" );
+		luaL_argerror( L, 1, "expecting unsigned integer" );
 	nlopt_srand( unsigned long( i ) );
 	return 0;
 }
@@ -607,7 +607,7 @@ static void mfunc(unsigned m, double *result, unsigned n, const double* x, doubl
 				lua_pushliteral( ctx->L, "grad" );
 				lua_rawget( ctx->L, t );
 				const int gradt = lua_gettop( ctx->L );
-				for( i = 0; i < n; i++ )
+				for( i = 0; i < ( n * m ); i++ )
 				{
 					lua_rawgeti( ctx->L, gradt, i + 1 );
 					grad[i] = lua_tonumber( ctx->L, -1 );
@@ -896,8 +896,103 @@ static int optimize( lua_State *L )
 	return 2;
 }
 
+static int set_local_optimizer( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	nlopt_opt_holder* local_opt = check( L, 2 );
+	lua_pushinteger( L, nlopt_set_local_optimizer(holder->d_obj, local_opt->d_obj ) );
+	return 1;
+}
+
+static int set_initial_step( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	luaL_checktype( L, 2, LUA_TTABLE );
+	const int n = nlopt_get_dimension( holder->d_obj );
+	std::vector<double> dx( n );
+	for( int i = 0; i < n; i++ )
+	{
+		lua_pushinteger( L, i + 1 );
+		lua_gettable( L, 2 );
+		dx[i] = lua_tonumber( L, -1 );
+		lua_pop( L, 1 );
+	}
+	lua_pushinteger( L, nlopt_set_initial_step( holder->d_obj, &dx[0] ) );
+	return 1;
+}
+
+static int set_initial_step1( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	const double dx = luaL_checknumber( L, 2 );
+	lua_pushinteger( L, nlopt_set_initial_step1( holder->d_obj, dx ) );
+	return 1;
+}
+
+static int get_initial_step( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	luaL_checktype( L, 2, LUA_TTABLE );
+	const int n = nlopt_get_dimension( holder->d_obj );
+	std::vector<double> x( n );
+	int i;
+	for( i = 0; i < n; i++ )
+	{
+		lua_pushinteger( L, i + 1 );
+		lua_gettable( L, 2 );
+		x[i] = lua_tonumber( L, -1 );
+		lua_pop( L, 1 );
+	}
+	std::vector<double> dx( n );
+	lua_pushinteger( L, nlopt_get_initial_step( holder->d_obj, &x[0], &dx[0] ) );
+	lua_createtable( L, n, 0 );
+	for( i = 0; i < n; i++ )
+	{
+		lua_pushnumber( L, dx[i] );
+		lua_rawseti( L, -2, i + 1 );
+	}
+	return 2;
+}
+
+static int set_population( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	const lua_Integer pop = luaL_checkinteger( L, 2 );
+	if( pop < 0 )
+		luaL_argerror( L, 2, "expecting unsigned integer" );
+	lua_pushinteger( L, nlopt_set_population( holder->d_obj, (unsigned int)pop ) );
+	return 1;
+}
+
+static int set_vector_storage( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	const lua_Integer M = luaL_checkinteger( L, 2 );
+	if( M < 0 )
+		luaL_argerror( L, 2, "expecting unsigned integer" );
+	lua_pushinteger( L, nlopt_set_vector_storage( holder->d_obj, (unsigned int)M ) );
+	return 1;
+}
+
+static int get_vector_storage( lua_State *L )
+{
+	nlopt_opt_holder* holder = check( L, 1 );
+	lua_pushnumber( L, nlopt_get_vector_storage( holder->d_obj ) );
+	return 1;
+}
+
+// Everything implemented but "Preconditioning with approximate Hessians" which is 
+// described as "somewhat experimental" by the authors of NLopt
+
 static const luaL_Reg Methods[] =
 {
+	{ "get_vector_storage", get_vector_storage },
+	{ "set_vector_storage", set_vector_storage },
+	{ "set_population", set_population },
+	{ "get_initial_step", get_initial_step },
+	{ "set_initial_step1", set_initial_step1 },
+	{ "set_initial_step", set_initial_step },
+	{ "set_local_optimizer", set_local_optimizer },
 	{ "optimize", optimize },
 	{ "set_force_stop", set_force_stop },
 	{ "get_force_stop", get_force_stop },
